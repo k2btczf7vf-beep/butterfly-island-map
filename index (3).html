@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Unfinished Map of Butterfly Island</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:Georgia,serif;color:#382718;background:#9f7d4f}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+#intro{position:fixed;inset:0;z-index:20;display:grid;place-items:center;text-align:center;background:#c7a66e}
+.sheet{padding:55px;max-width:720px;background:#d9bd83;border:1px solid #62492e;box-shadow:0 20px 60px #0005}
+h1{letter-spacing:5px}.primary{background:#382718;color:#ead7aa;border:0;padding:12px 20px}
+#app{height:100%;display:grid;grid-template-rows:62px 1fr}header{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#ccb078;border-bottom:1px solid #5b4229}
+#work{position:relative;overflow:hidden}svg{width:100%;height:100%;touch-action:none;background:#c5a36b}
+#tools{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:5px;padding:8px;background:#d4b980e8;border:1px solid #60472b}
+.tool{padding:7px 10px;border:1px solid #6a5032;background:#dec794;text-align:left}.tool.active{background:#3c2a1b;color:#ead8aa}
+#panel{display:none;position:absolute;right:14px;top:14px;width:320px;padding:14px;background:#dcc38e;border:1px solid #60472b;box-shadow:4px 5px 15px #0004}
+label{display:block;font-size:12px;font-weight:bold;margin-top:8px}input,textarea,select{width:100%;padding:7px;margin-top:3px;background:#ead8aa;border:1px solid #725839}
+textarea{min-height:70px}.row{display:flex;gap:6px;margin-top:10px}.row>*{flex:1}
+#status{position:absolute;right:12px;bottom:12px;background:#dcc38ed9;border:1px solid #60472b;padding:7px 10px;font-size:12px}
+</style></head>
+<body>
+<div id="intro"><div class="sheet"><h1>THE UNFINISHED MAP</h1><p><i>No complete map of Butterfly Island exists.</i></p><p>Build the island from what you have seen, heard, and believed.</p><button class="primary" onclick="intro.style.display='none'">ENTER THE MAP</button></div></div>
+<div id="app"><header><div><b>THE UNFINISHED MAP</b><br><small>Butterfly Island — Community Cartography Archive</small></div><div><button onclick="toggleCommunity()">COMMUNITY MAP</button> <button onclick="exportMap()">EXPORT MAP</button></div></header>
+<div id="work">
+<svg id="map" viewBox="0 0 1400 850">
+<defs><pattern id="waves" width="70" height="38" patternUnits="userSpaceOnUse"><path d="M5 20 Q18 10 31 20 T57 20" fill="none" stroke="#6b5132" opacity=".2"/></pattern></defs>
+<rect width="1400" height="850" fill="#c6a56d"/><rect width="1400" height="850" fill="url(#waves)"/>
+<g id="world"><g id="base">
+<text x="700" y="60" text-anchor="middle" font-size="34" letter-spacing="7" fill="#49331f">BUTTERFLY ISLAND</text>
+<path d="M700 176 C630 118 505 100 408 145 C310 190 250 275 285 345 C315 405 395 413 455 398 C390 450 345 525 370 595 C398 670 505 681 588 623 C632 592 667 548 700 504 C733 548 768 592 812 623 C895 681 1002 670 1030 595 C1055 525 1010 450 945 398 C1005 413 1085 405 1115 345 C1150 275 1090 190 992 145 C895 100 770 118 700 176Z" fill="#cbb27a" stroke="#49341f" stroke-width="5"/>
+<g opacity=".4" stroke="#594128" fill="none"><path d="M420 260l25-38 24 38 22-31 30 43M865 270l28-42 25 40 20-28 32 45" stroke-width="3"/><path d="M490 510q35-35 70 0q30 30 55-5M790 530q35-35 70 0q30 30 55-5" stroke-width="2"/></g>
+<g transform="translate(1180 650)" stroke="#4d3823" fill="none"><circle r="55"/><path d="M0-70V70M-70 0H70M-48-48L48 48M48-48L-48 48"/><text y="-78" text-anchor="middle" fill="#4d3823">N</text></g>
+</g><g id="community" opacity=".4" style="display:none"></g><g id="user"></g></g></svg>
+<div id="tools">
+<button class="tool active" data-t="hand">✋ HAND</button><button class="tool" data-t="pen">✒ PEN</button><button class="tool" data-t="route">⋯ ROUTE</button><button class="tool" data-t="location">⌖ LOCATION</button><button class="tool" data-t="note">✎ NOTE</button><button class="tool" data-t="clue">▣ CLUE</button><button class="tool" data-t="eraser">⌫ ERASER</button>
+<hr><button class="tool" onclick="undo()">↶ UNDO</button><button class="tool" onclick="redo()">↷ REDO</button><button class="tool" onclick="zoom(1.2)">＋ ZOOM</button><button class="tool" onclick="zoom(.83)">− ZOOM</button><button class="tool" onclick="resetView()">◎ RESET VIEW</button>
+</div><div id="panel"></div><div id="status">Drag to move the map. Scroll to zoom.</div>
+</div></div>
+<script>
+const svg=document.querySelector('#map'),world=document.querySelector('#world'),user=document.querySelector('#user'),panel=document.querySelector('#panel'),status=document.querySelector('#status');
+let tool='hand',draw=false,pan=null,route=[],view={x:0,y:0,s:1},objs=JSON.parse(localStorage.getItem('BI-map')||'[]'),hist=[JSON.stringify(objs)],hi=0;
+const NS='http://www.w3.org/2000/svg';function E(t,a={}){let e=document.createElementNS(NS,t);for(let k in a)e.setAttribute(k,a[k]);return e}
+function point(e){let p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;let q=p.matrixTransform(svg.getScreenCTM().inverse());return{x:(q.x-view.x)/view.s,y:(q.y-view.y)/view.s}}
+function apply(){world.setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.s})`)}
+function save(){localStorage.setItem('BI-map',JSON.stringify(objs));hist=hist.slice(0,hi+1);hist.push(JSON.stringify(objs));hi++;render()}
+function render(){user.innerHTML='';objs.forEach(o=>{let g=E('g',{'data-id':o.id,class:'obj'});if(o.k==='pen'||o.k==='route')g.append(E('path',{d:o.d,fill:'none',stroke:'#4b301d','stroke-width':o.k==='pen'?2.5:2.2,'stroke-dasharray':o.k==='route'?'4 10':'','stroke-linecap':'round','stroke-linejoin':'round'}));if(o.k==='location'){g.append(E('circle',{cx:o.x,cy:o.y,r:8,fill:'#593821'}));let t=E('text',{x:o.x,y:o.y+28,'text-anchor':'middle','font-size':18,'font-style':'italic',fill:'#382718'});t.textContent=o.text;g.append(t)}if(o.k==='note'){let t=E('text',{x:o.x,y:o.y,'font-size':15,'font-family':'cursive',fill:'#4a3020'});t.textContent=o.text;g.append(t)}if(o.k==='clue'){g.append(E('rect',{x:o.x-7,y:o.y-7,width:14,height:14,fill:'#762d23',transform:`rotate(45 ${o.x} ${o.y})`}));let t=E('text',{x:o.x+14,y:o.y+5,'font-size':13,fill:'#4a3020'});t.textContent=o.text;g.append(t)}user.append(g)});apply()}
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tool=b.dataset.t;route=[];document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('active',x===b));status.textContent={hand:'Drag to move the map. Scroll to zoom.',pen:'Draw your interpretation directly on the map.',route:'Click several points. Double-click to finish the route.',location:'Click to place a location.',note:'Click to add an interpretation note.',clue:'Click to attach a source or clue.',eraser:'Click a user-created object to erase it.'}[tool]});
+svg.onpointerdown=e=>{let p=point(e);if(tool==='hand'){pan={cx:e.clientX,cy:e.clientY,x:view.x,y:view.y};return}if(tool==='pen'){draw=true;objs.push({id:Date.now()+Math.random(),k:'pen',d:`M${p.x} ${p.y}`});return}if(tool==='route'){route.push(p);return}if(['location','note','clue'].includes(tool))form(tool,p)};
+svg.onpointermove=e=>{if(pan){view.x=pan.x+(e.clientX-pan.cx)/view.s;view.y=pan.y+(e.clientY-pan.cy)/view.s;apply()}else if(draw){let p=point(e);objs[objs.length-1].d+=` L${p.x} ${p.y}`;render()}};
+svg.onpointerup=()=>{if(pan)pan=null;if(draw){draw=false;save()}};
+svg.ondblclick=e=>{if(tool==='route'&&route.length>1){let d=`M${route[0].x} ${route[0].y}`;for(let i=1;i<route.length;i++)d+=` Q${(route[i-1].x+route[i].x)/2} ${(route[i-1].y+route[i].y)/2-10} ${route[i].x} ${route[i].y}`;objs.push({id:Date.now(),k:'route',d});route=[];save();e.preventDefault()}};
+svg.onwheel=e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9)};
+svg.onclick=e=>{if(tool==='eraser'){let g=e.target.closest('.obj');if(g){objs=objs.filter(o=>String(o.id)!==g.dataset.id);save()}}};
+function form(k,p){panel.style.display='block';panel.innerHTML=`<h3>${k.toUpperCase()}</h3><label>${k==='location'?'LOCATION NAME':k==='clue'?'SOURCE / CLUE':'INTERPRETATION'}<textarea id="val"></textarea></label>${k==='location'?'<label>CONFIDENCE<select><option>Theory</option><option>Likely</option><option>Certain</option></select></label>':''}<div class="row"><button onclick="panel.style.display='none'">CANCEL</button><button class="primary" id="add">ADD TO MAP</button></div>`;panel.querySelector('#add').onclick=()=>{let text=panel.querySelector('#val').value.trim();if(text){objs.push({id:Date.now(),k,x:p.x,y:p.y,text});panel.style.display='none';save()}}}
+function zoom(f){view.s=Math.max(.55,Math.min(3.5,view.s*f));apply()}function resetView(){view={x:0,y:0,s:1};apply()}
+function undo(){if(hi>0){hi--;objs=JSON.parse(hist[hi]);render()}}function redo(){if(hi<hist.length-1){hi++;objs=JSON.parse(hist[hi]);render()}}
+function toggleCommunity(){let c=document.querySelector('#community');c.style.display=c.style.display==='none'?'block':'none';if(!c.innerHTML)c.innerHTML='<path d="M430 270 Q600 360 720 430 T960 310" fill="none" stroke="#7b2d25" stroke-width="3" stroke-dasharray="5 12"/><circle cx="500" cy="340" r="8" fill="#7b2d25"/><text x="515" y="345" fill="#5b2b25" font-size="17">Forest? — Community Interpretation</text>'}
+function exportMap(){let c=svg.cloneNode(true),b=new Blob([new XMLSerializer().serializeToString(c)],{type:'image/svg+xml'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='my-butterfly-island-map.svg';a.click();URL.revokeObjectURL(u)}
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}});
+render();
+</script></body></html>
